@@ -17,5 +17,9 @@ fn main() -> eframe::Result {
             .with_min_inner_size([600.0, 460.0]),
         ..Default::default()
     };
-    eframe::run_native("Claude Swap", options, Box::new(|cc| Ok(Box::new(app::App::new(cc)))))
+    eframe::run_native(
+        "Claude Swap",
+        options,
+        Box::new(|cc| Ok(Box::new(app::App::new(cc)))),
+    )
 }

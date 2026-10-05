@@ -22,7 +22,9 @@ pub fn clock(value: &str) -> String {
 }
 
 pub fn until(value: &str) -> String {
-    let Some(t) = parse_iso(value) else { return String::new() };
+    let Some(t) = parse_iso(value) else {
+        return String::new();
+    };
     let secs = (t - Utc::now()).num_seconds();
     if secs <= 0 {
         return "now".to_string();

@@ -9,7 +9,9 @@ fn home() -> PathBuf {
 }
 
 fn plist_path() -> PathBuf {
-    home().join("Library/LaunchAgents").join(format!("{LABEL}.plist"))
+    home()
+        .join("Library/LaunchAgents")
+        .join(format!("{LABEL}.plist"))
 }
 
 pub fn log_path() -> PathBuf {
@@ -17,9 +19,15 @@ pub fn log_path() -> PathBuf {
 }
 
 fn domain() -> String {
-    let uid = String::from_utf8_lossy(&Command::new("id").arg("-u").output().map(|o| o.stdout).unwrap_or_default())
-        .trim()
-        .to_string();
+    let uid = String::from_utf8_lossy(
+        &Command::new("id")
+            .arg("-u")
+            .output()
+            .map(|o| o.stdout)
+            .unwrap_or_default(),
+    )
+    .trim()
+    .to_string();
     format!("gui/{uid}")
 }
 
@@ -57,14 +65,16 @@ fn plist(cswap: &str) -> String {
 }
 
 fn launchctl(args: &[&str]) -> Result<String, String> {
-    let output = Command::new("launchctl").args(args).output().map_err(|e| e.to_string())?;
+    let output = Command::new("launchctl")
+        .args(args)
+        .output()
+        .map_err(|e| e.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     if output.status.success() {
         return Ok(stdout);
     }
     Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
 }
-
 
 pub fn is_running() -> bool {
     launchctl(&["print", &format!("{}/{LABEL}", domain())])
@@ -94,5 +104,8 @@ pub fn uninstall() -> Result<(), String> {
 
 pub fn last_log_line() -> Option<String> {
     let text = std::fs::read_to_string(log_path()).ok()?;
-    text.lines().rev().find(|l| !l.trim().is_empty()).map(|l| l.trim().to_string())
+    text.lines()
+        .rev()
+        .find(|l| !l.trim().is_empty())
+        .map(|l| l.trim().to_string())
 }

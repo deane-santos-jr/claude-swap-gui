@@ -106,7 +106,11 @@ impl App {
     }
 
     fn apply_auto_events(&mut self, events: Vec<AutoEvent>) {
-        if let Some(last) = events.iter().rev().find(|e| e.event != "poll" && e.event != "sleep") {
+        if let Some(last) = events
+            .iter()
+            .rev()
+            .find(|e| e.event != "poll" && e.event != "sleep")
+        {
             let summary = last.summary();
             let is_error = last.event == "error";
             self.auto_last_event = Some(summary.clone());
@@ -119,14 +123,22 @@ impl App {
     }
 
     fn set_notice(&mut self, text: String, is_error: bool) {
-        self.notice = Some(Notice { text, is_error, at: Instant::now() });
+        self.notice = Some(Notice {
+            text,
+            is_error,
+            at: Instant::now(),
+        });
     }
 
     fn suggested_resume_target(&self) -> Option<u32> {
         self.accounts
             .iter()
             .filter(|a| !a.disabled && a.usage_status == "ok")
-            .min_by(|a, b| a.worst_window_pct().partial_cmp(&b.worst_window_pct()).unwrap())
+            .min_by(|a, b| {
+                a.worst_window_pct()
+                    .partial_cmp(&b.worst_window_pct())
+                    .unwrap()
+            })
             .map(|a| a.number)
     }
 
@@ -144,7 +156,10 @@ impl App {
             self.desktop_sessions = list_desktop_sessions();
             self.last_session_refresh = Instant::now();
         }
-        let stale = self.background_checked_at.map(|t| t.elapsed() >= BACKGROUND_REFRESH).unwrap_or(true);
+        let stale = self
+            .background_checked_at
+            .map(|t| t.elapsed() >= BACKGROUND_REFRESH)
+            .unwrap_or(true);
         if stale && self.in_flight.is_none() {
             self.background_auto = launchd::is_running();
             if self.background_auto {
@@ -169,22 +184,32 @@ impl eframe::App for App {
         let panel_fill = ui.visuals().panel_fill;
 
         egui::Panel::top("header")
-            .frame(Frame::new().inner_margin(Margin::symmetric(16, 12)).fill(panel_fill))
+            .frame(
+                Frame::new()
+                    .inner_margin(Margin::symmetric(16, 12))
+                    .fill(panel_fill),
+            )
             .show(ui, |ui| self.header(ui));
 
         egui::Panel::bottom("footer")
-            .frame(Frame::new().inner_margin(Margin::symmetric(16, 10)).fill(panel_fill))
+            .frame(
+                Frame::new()
+                    .inner_margin(Margin::symmetric(16, 10))
+                    .fill(panel_fill),
+            )
             .show(ui, |ui| self.footer(ui));
 
         egui::CentralPanel::default()
             .frame(Frame::new().inner_margin(Margin::symmetric(16, 8)))
             .show(ui, |ui| {
-                egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                    self.accounts_section(ui);
-                    ui.add_space(14.0);
-                    self.desktop_section(ui);
-                    ui.add_space(8.0);
-                });
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        self.accounts_section(ui);
+                        ui.add_space(14.0);
+                        self.desktop_section(ui);
+                        ui.add_space(8.0);
+                    });
             });
 
         self.remove_confirmation(&ctx);
@@ -209,7 +234,8 @@ impl App {
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let refresh = ui.add_enabled(self.in_flight.is_none(), egui::Button::new("Refresh"));
+                let refresh =
+                    ui.add_enabled(self.in_flight.is_none(), egui::Button::new("Refresh"));
                 if refresh.clicked() {
                     self.dispatch(Action::Refresh);
                 }
@@ -217,7 +243,11 @@ impl App {
                     .last_usage_refresh
                     .map(|t| timefmt::age(t.elapsed().as_secs_f64()))
                     .unwrap_or_else(|| "never".into());
-                ui.label(RichText::new(format!("checked {age}")).small().color(muted(ui)));
+                ui.label(
+                    RichText::new(format!("checked {age}"))
+                        .small()
+                        .color(muted(ui)),
+                );
             });
         });
         ui.add_space(6.0);
@@ -235,11 +265,10 @@ impl App {
                     .fixed_decimals(0)
                     .show_value(true),
             );
-            if slider.drag_stopped() || slider.lost_focus() {
-                if (self.threshold_draft - self.threshold).abs() >= 0.5 && self.in_flight.is_none() {
+            if (slider.drag_stopped() || slider.lost_focus())
+                && (self.threshold_draft - self.threshold).abs() >= 0.5 && self.in_flight.is_none() {
                     self.dispatch(Action::SetThreshold(self.threshold_draft));
                 }
-            }
             let check = ui.add_enabled(self.in_flight.is_none(), egui::Button::new("Check now"));
             if check.on_hover_text("Run one auto-switch decision right now.").clicked() {
                 self.dispatch(Action::AutoOnce { dry_run: false });
@@ -302,7 +331,11 @@ impl App {
     }
 
     fn account_card(&mut self, ui: &mut egui::Ui, row: &AccountRow) {
-        let stroke = if row.active { Stroke::new(1.5, accent()) } else { Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color) };
+        let stroke = if row.active {
+            Stroke::new(1.5, accent())
+        } else {
+            Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color)
+        };
         Frame::new()
             .fill(card_fill(ui))
             .stroke(stroke)
@@ -313,7 +346,11 @@ impl App {
                     ui.vertical(|ui| {
                         ui.horizontal(|ui| {
                             let dot = "•";
-                            ui.label(RichText::new(dot).color(if row.active { accent() } else { muted(ui) }));
+                            ui.label(RichText::new(dot).color(if row.active {
+                                accent()
+                            } else {
+                                muted(ui)
+                            }));
                             ui.label(RichText::new(row.display_name()).size(16.0).strong());
                             if row.active {
                                 badge(ui, "active", accent());
@@ -325,7 +362,11 @@ impl App {
                                 badge(ui, status, danger());
                             }
                         });
-                        ui.label(RichText::new(format!("#{} · {}", row.number, row.organization_name)).small().color(muted(ui)));
+                        ui.label(
+                            RichText::new(format!("#{} · {}", row.number, row.organization_name))
+                                .small()
+                                .color(muted(ui)),
+                        );
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                         self.card_buttons(ui, row);
@@ -340,26 +381,48 @@ impl App {
                         if let Some(spend) = &usage.spend {
                             spend_bar(ui, spend);
                         }
-                        let age = if fresh { row.usage_age_seconds } else { row.last_good_age_seconds };
-                        let mut note = format!("measured {}", age.map(timefmt::age).unwrap_or_else(|| "at an unknown time".into()));
+                        let age = if fresh {
+                            row.usage_age_seconds
+                        } else {
+                            row.last_good_age_seconds
+                        };
+                        let mut note = format!(
+                            "measured {}",
+                            age.map(timefmt::age)
+                                .unwrap_or_else(|| "at an unknown time".into())
+                        );
                         if !fresh {
                             note.push_str(" · too old to drive switching");
                         }
                         if let Some(retry) = &row.usage_retry_at {
-                            note.push_str(&format!(" · usage API backing off until {}", timefmt::clock(retry)));
+                            note.push_str(&format!(
+                                " · usage API backing off until {}",
+                                timefmt::clock(retry)
+                            ));
                         } else if let Some(err) = &row.usage_error {
                             note.push_str(&format!(" · {err}"));
                         }
-                        ui.label(RichText::new(note).small().color(if fresh { muted(ui) } else { warn() }));
+                        ui.label(RichText::new(note).small().color(if fresh {
+                            muted(ui)
+                        } else {
+                            warn()
+                        }));
                     }
                     None => {
-                        let why = row.usage_error.clone().unwrap_or_else(|| "no usage data".into());
+                        let why = row
+                            .usage_error
+                            .clone()
+                            .unwrap_or_else(|| "no usage data".into());
                         ui.label(RichText::new(why).small().color(muted(ui)));
                     }
                 }
                 if let Some(expires) = &row.login_expires_at {
                     let left = timefmt::until(expires);
-                    ui.label(RichText::new(format!("login valid for {left}")).small().color(muted(ui)));
+                    ui.label(
+                        RichText::new(format!("login valid for {left}"))
+                            .small()
+                            .color(muted(ui)),
+                    );
                 }
             });
     }
@@ -369,16 +432,33 @@ impl App {
         if ui.add_enabled(idle, egui::Button::new("Remove")).clicked() {
             self.confirm_remove = Some(row.number);
         }
-        let hold_label = if row.disabled { "Rejoin rotation" } else { "Hold out" };
-        if ui.add_enabled(idle, egui::Button::new(hold_label)).clicked() {
-            self.dispatch(if row.disabled { Action::Enable(row.number) } else { Action::Disable(row.number) });
+        let hold_label = if row.disabled {
+            "Rejoin rotation"
+        } else {
+            "Hold out"
+        };
+        if ui
+            .add_enabled(idle, egui::Button::new(hold_label))
+            .clicked()
+        {
+            self.dispatch(if row.disabled {
+                Action::Enable(row.number)
+            } else {
+                Action::Disable(row.number)
+            });
         }
         let term = ui.add_enabled(idle, egui::Button::new("Terminal"));
         if term.on_hover_text("Open a Terminal window running Claude Code as this account only; other terminals stay on the active account.").clicked() {
             self.dispatch(Action::OpenTerminal(row.number));
         }
-        let switch = ui.add_enabled(idle && row.is_switchable(), egui::Button::new(RichText::new("Switch").strong()));
-        if switch.on_hover_text("Make this the account every Claude Code session uses.").clicked() {
+        let switch = ui.add_enabled(
+            idle && row.is_switchable(),
+            egui::Button::new(RichText::new("Switch").strong()),
+        );
+        if switch
+            .on_hover_text("Make this the account every Claude Code session uses.")
+            .clicked()
+        {
             self.dispatch(Action::SwitchTo(row.number));
         }
     }
@@ -403,11 +483,17 @@ impl App {
                 .and_then(|n| self.accounts.iter().find(|a| a.number == n))
                 .map(|a| a.display_name())
                 .unwrap_or_else(|| "choose…".into());
-            egui::ComboBox::from_id_salt("resume-target").selected_text(current).show_ui(ui, |ui| {
-                for a in &self.accounts {
-                    ui.selectable_value(&mut self.resume_target, Some(a.number), a.display_name());
-                }
-            });
+            egui::ComboBox::from_id_salt("resume-target")
+                .selected_text(current)
+                .show_ui(ui, |ui| {
+                    for a in &self.accounts {
+                        ui.selectable_value(
+                            &mut self.resume_target,
+                            Some(a.number),
+                            a.display_name(),
+                        );
+                    }
+                });
         });
         ui.add_space(4.0);
         for s in &sessions {
@@ -418,14 +504,27 @@ impl App {
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         let alive = s.is_alive();
-                        ui.label(RichText::new("•").size(18.0).color(if alive { ok_color() } else { muted(ui) }));
+                        ui.label(RichText::new("•").size(18.0).color(if alive {
+                            ok_color()
+                        } else {
+                            muted(ui)
+                        }));
                         let can = self.in_flight.is_none() && self.resume_target.is_some();
                         let mut resume = false;
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            resume = ui.add_enabled(can, egui::Button::new("Resume in Terminal")).clicked();
+                            resume = ui
+                                .add_enabled(can, egui::Button::new("Resume in Terminal"))
+                                .clicked();
                             ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
-                                ui.add(egui::Label::new(RichText::new(&s.name).strong()).truncate());
-                                ui.add(egui::Label::new(RichText::new(s.short_folder()).small().color(muted(ui))).truncate());
+                                ui.add(
+                                    egui::Label::new(RichText::new(&s.name).strong()).truncate(),
+                                );
+                                ui.add(
+                                    egui::Label::new(
+                                        RichText::new(s.short_folder()).small().color(muted(ui)),
+                                    )
+                                    .truncate(),
+                                );
                             });
                         });
                         if resume {
@@ -442,7 +541,9 @@ impl App {
     }
 
     fn remove_confirmation(&mut self, ctx: &egui::Context) {
-        let Some(number) = self.confirm_remove else { return };
+        let Some(number) = self.confirm_remove else {
+            return;
+        };
         let email = self
             .accounts
             .iter()
@@ -478,7 +579,8 @@ impl App {
 }
 
 fn read_threshold() -> f64 {
-    let value: Result<serde_json::Value, _> = cswap::run_json(&["config", "get", "autoswitch.threshold", "--json"]);
+    let value: Result<serde_json::Value, _> =
+        cswap::run_json(&["config", "get", "autoswitch.threshold", "--json"]);
     value
         .ok()
         .and_then(|v| {
@@ -506,7 +608,10 @@ fn badge(ui: &mut egui::Ui, text: &str, color: Color32) {
 
 fn usage_bar(ui: &mut egui::Ui, label: &str, window: &Window) {
     ui.horizontal(|ui| {
-        ui.add_sized([96.0, 18.0], egui::Label::new(RichText::new(label).small()).halign(egui::Align::Min));
+        ui.add_sized(
+            [96.0, 18.0],
+            egui::Label::new(RichText::new(label).small()).halign(egui::Align::Min),
+        );
         let pct = window.pct.clamp(0.0, 100.0);
         let bar = egui::ProgressBar::new((pct / 100.0) as f32)
             .desired_width(220.0)
@@ -516,18 +621,29 @@ fn usage_bar(ui: &mut egui::Ui, label: &str, window: &Window) {
         ui.add(bar);
         let mut text = format!("{pct:.0}%");
         if let Some(reset) = &window.resets_at {
-            text.push_str(&format!("  · resets {} ({})", timefmt::clock(reset), timefmt::until(reset)));
+            text.push_str(&format!(
+                "  · resets {} ({})",
+                timefmt::clock(reset),
+                timefmt::until(reset)
+            ));
         }
         if window.ahead_of_pace {
             text.push_str("  · ahead of pace");
         }
-        ui.label(RichText::new(text).small().color(if pct >= 100.0 { danger() } else { ui.visuals().text_color() }));
+        ui.label(RichText::new(text).small().color(if pct >= 100.0 {
+            danger()
+        } else {
+            ui.visuals().text_color()
+        }));
     });
 }
 
 fn spend_bar(ui: &mut egui::Ui, spend: &Spend) {
     ui.horizontal(|ui| {
-        ui.add_sized([96.0, 18.0], egui::Label::new(RichText::new("extra usage").small()).halign(egui::Align::Min));
+        ui.add_sized(
+            [96.0, 18.0],
+            egui::Label::new(RichText::new("extra usage").small()).halign(egui::Align::Min),
+        );
         let pct = spend.pct.clamp(0.0, 100.0);
         ui.add(
             egui::ProgressBar::new((pct / 100.0) as f32)
@@ -536,7 +652,13 @@ fn spend_bar(ui: &mut egui::Ui, spend: &Spend) {
                 .fill(level_color(pct))
                 .corner_radius(CornerRadius::same(6)),
         );
-        ui.label(RichText::new(format!("{:.2} / {:.2} {}", spend.used, spend.limit, spend.currency)).small());
+        ui.label(
+            RichText::new(format!(
+                "{:.2} / {:.2} {}",
+                spend.used, spend.limit, spend.currency
+            ))
+            .small(),
+        );
     });
 }
 

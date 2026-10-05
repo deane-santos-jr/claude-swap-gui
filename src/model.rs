@@ -168,7 +168,10 @@ impl AutoEvent {
             "no-switch" => format!(
                 "holding: {}{}",
                 self.reason.clone().unwrap_or_default(),
-                self.detail.as_ref().map(|d| format!(" · {d}")).unwrap_or_default()
+                self.detail
+                    .as_ref()
+                    .map(|d| format!(" · {d}"))
+                    .unwrap_or_default()
             ),
             "all-exhausted" => "every account is exhausted".to_string(),
             "error" => format!("error: {}", self.message.clone().unwrap_or_default()),
