@@ -4,6 +4,12 @@ A native macOS window for [claude-swap](https://github.com/realiti4/claude-swap)
 
 The window is a thin shell over the `cswap` CLI. Every action runs a `cswap … --json` command and renders the result, so the CLI, its TUI, the menu bar, and this window always agree on state.
 
+<p align="center">
+  <img src="docs/screenshot.png" width="640" alt="Claude Swap window: four accounts with 5-hour, 7-day, Opus weekly, and extra-usage meters, the active account outlined, one account held out of rotation, auto-switch on at an 85% threshold, and a Claude desktop app session ready to resume in Terminal">
+</p>
+
+The accounts in the screenshot are demo data.
+
 ## Requirements
 
 - macOS 12 or later
