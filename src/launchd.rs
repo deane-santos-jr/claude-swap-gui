@@ -1,8 +1,11 @@
 use crate::cswap;
-use std::path::PathBuf;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const LABEL: &str = "com.cswap.auto";
+const LOG_TAIL_BYTES: u64 = 64 * 1024;
 
 fn home() -> PathBuf {
     PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".into()))
@@ -52,7 +55,7 @@ fn plist(cswap: &str) -> String {
 <dict>
   <key>Label</key><string>{LABEL}</string>
   <key>ProgramArguments</key>
-  <array><string>{cswap}</string><string>auto</string></array>
+  <array><string>{cswap}</string><string>auto</string><string>--json</string></array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ProcessType</key><string>Background</string>
@@ -103,9 +106,85 @@ pub fn uninstall() -> Result<(), String> {
 }
 
 pub fn last_log_line() -> Option<String> {
-    let text = std::fs::read_to_string(log_path()).ok()?;
+    let tail = read_log_tail(&log_path(), LOG_TAIL_BYTES).ok()?;
+    last_meaningful_line(&tail)
+}
+
+fn read_log_tail(path: &Path, max_bytes: u64) -> std::io::Result<String> {
+    let mut file = File::open(path)?;
+    let start = file.metadata()?.len().saturating_sub(max_bytes);
+    file.seek(SeekFrom::Start(start))?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    if start == 0 {
+        return Ok(text);
+    }
+    Ok(without_first_line(&text).to_string())
+}
+
+fn without_first_line(text: &str) -> &str {
+    text.split_once('\n').map_or("", |(_, rest)| rest)
+}
+
+fn last_meaningful_line(text: &str) -> Option<String> {
     text.lines()
+        .map(str::trim)
         .rev()
-        .find(|l| !l.trim().is_empty())
-        .map(|l| l.trim().to_string())
+        .find(|l| !l.is_empty() && !is_malloc_stack_logging_noise(l))
+        .map(str::to_string)
+}
+
+fn is_malloc_stack_logging_noise(line: &str) -> bool {
+    line.contains("MallocStackLogging:")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn last_log_line_skips_trailing_malloc_noise() {
+        let text = "{\"event\":\"no-switch\"}\n\
+            Python(60742) MallocStackLogging: can't turn off malloc stack logging because it was not enabled.\n\n";
+        assert_eq!(
+            last_meaningful_line(text).as_deref(),
+            Some("{\"event\":\"no-switch\"}")
+        );
+    }
+
+    #[test]
+    fn last_log_line_keeps_other_stderr_text() {
+        let text = "{\"event\":\"poll\"}\nTraceback (most recent call last):\n";
+        assert_eq!(
+            last_meaningful_line(text).as_deref(),
+            Some("Traceback (most recent call last):")
+        );
+    }
+
+    fn log_file_with(name: &str, contents: &str) -> PathBuf {
+        let path =
+            std::env::temp_dir().join(format!("cswap-gui-{name}-{}.log", std::process::id()));
+        std::fs::write(&path, contents).unwrap();
+        path
+    }
+
+    #[test]
+    fn log_tail_drops_the_line_cut_by_the_byte_limit() {
+        let path = log_file_with("cut", "first line\nsecond\nthird\n");
+        assert_eq!(read_log_tail(&path, 10).unwrap(), "third\n");
+    }
+
+    #[test]
+    fn log_tail_of_a_short_file_is_the_whole_file() {
+        let path = log_file_with("short", "only\n");
+        assert_eq!(read_log_tail(&path, 1024).unwrap(), "only\n");
+    }
+
+    #[test]
+    fn login_item_runs_cswap_auto_with_json_output() {
+        assert!(plist("/bin/cswap").contains(
+            "<array><string>/bin/cswap</string><string>auto</string><string>--json</string></array>"
+        ));
+    }
 }
