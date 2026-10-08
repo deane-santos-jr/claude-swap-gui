@@ -2,7 +2,7 @@ use crate::actions::{self, Action, Outcome};
 use crate::cswap;
 use crate::desktop_sessions::{list_desktop_sessions, DesktopSession};
 use crate::launchd;
-use crate::model::{AccountRow, AutoEvent, ListPayload, Spend, Window};
+use crate::model::{auto_log_summary, AccountRow, AutoEvent, ListPayload, Spend, Window};
 use crate::timefmt;
 use egui::{Color32, CornerRadius, Frame, Margin, RichText, Stroke};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -56,7 +56,7 @@ impl App {
             confirm_remove: None,
             background_auto: launchd::is_running(),
             background_checked_at: Some(Instant::now()),
-            auto_last_event: launchd::last_log_line(),
+            auto_last_event: latest_auto_log_summary(),
             threshold,
             threshold_draft: threshold,
             resume_target: None,
@@ -163,7 +163,7 @@ impl App {
         if stale && self.in_flight.is_none() {
             self.background_auto = launchd::is_running();
             if self.background_auto {
-                self.auto_last_event = launchd::last_log_line();
+                self.auto_last_event = latest_auto_log_summary();
             }
             self.background_checked_at = Some(Instant::now());
         }
@@ -576,6 +576,10 @@ impl App {
     fn active_account(&self) -> Option<&AccountRow> {
         self.accounts.iter().find(|a| a.active)
     }
+}
+
+fn latest_auto_log_summary() -> Option<String> {
+    launchd::last_log_line().map(|line| auto_log_summary(&line))
 }
 
 fn read_threshold() -> f64 {

@@ -160,7 +160,7 @@ impl AutoEvent {
         };
         match self.event.as_str() {
             "switch" => format!(
-                "switched {} → {} ({})",
+                "switched {} to {} ({})",
                 who(&self.from),
                 who(&self.to),
                 self.trigger.clone().unwrap_or_default()
@@ -178,5 +178,28 @@ impl AutoEvent {
             "account-quarantined" => "an account was quarantined (dead token)".to_string(),
             other => other.to_string(),
         }
+    }
+}
+
+pub fn auto_log_summary(line: &str) -> String {
+    serde_json::from_str::<AutoEvent>(line)
+        .map(|event| event.summary())
+        .unwrap_or_else(|_| line.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn auto_log_line_with_a_json_event_reads_as_its_summary() {
+        let line = r#"{"event":"switch","from":{"email":"a@x"},"to":{"email":"b@x"},"trigger":"threshold"}"#;
+        assert_eq!(auto_log_summary(line), "switched a@x to b@x (threshold)");
+    }
+
+    #[test]
+    fn auto_log_line_that_is_not_json_reads_verbatim() {
+        let line = "Traceback (most recent call last):";
+        assert_eq!(auto_log_summary(line), line);
     }
 }
